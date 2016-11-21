@@ -1,6 +1,5 @@
 import model.*;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 public final class MyStrategy implements Strategy {
@@ -42,9 +41,10 @@ public final class MyStrategy implements Strategy {
         initializeStrategy(self, game);
         initializeTick(self, world, game, move);
 
-        if (world.getTickIndex() < 900){
-            towerStrategy();
-            return;
+        if (world.getTickIndex() < 1100){
+            // Постоянно двигаемся из-стороны в сторону, чтобы по нам было сложнее попасть.
+            // Считаете, что сможете придумать более эффективный алгоритм уклонения? Попробуйте! ;)
+            move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
         }
 
         // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
@@ -53,17 +53,62 @@ public final class MyStrategy implements Strategy {
             return;
         }
 
-        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 4).size() / 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 2){
-            backpedalingStrategy();
-            return;
-        }
+//        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 2).size() * 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 3){
+//            backpedalingStrategy();
+//            return;
+//        }
         attackStrategy();
 
     }
 
-    private void towerStrategy(){
-        double tile = game.getMapSize() / 10;
-        goTo(new Point2D(tile * 0.9 , tile * 3.9));
+    private void towerHugStrategy(){
+        Building tower = getFriendlyTower();
+        if (friendsInRange(self.getCastRange() / 5).size() < 1){
+            goTo(new Point2D(tower.getX(), tower.getY()));
+        }
+        return;
+    }
+
+    private void followStrategy(){
+        Wizard[] wizards = world.getWizards();
+        Wizard nearest = null;
+        double distance = Double.MAX_VALUE;
+        for (Wizard wizard: wizards){
+            if (self.getDistanceTo(wizard) < distance && wizard.getFaction() == self.getFaction()){
+                distance = self.getDistanceTo(wizard);
+                nearest = wizard;
+            }
+        }
+        double newx;
+        double newy;
+        if (nearest == null) return;
+        if ( nearest.getSpeedX() < 0){
+            newx = nearest.getX() - nearest.getRadius();
+        } else {
+            newx = nearest.getX() + nearest.getRadius();
+        }
+        if ( nearest.getSpeedY() < 0){
+            newy = nearest.getY() - nearest.getRadius();
+        } else {
+            newy = nearest.getY() + nearest.getRadius();
+        }
+        goTo(new Point2D(newx, newy));
+        return;
+    }
+
+    private Building getFriendlyTower(){
+        Building[] buildings = world.getBuildings();
+        Building sweetTower = null;
+        Double distanceToNearest = Double.MAX_VALUE;
+        for (Building building: buildings){
+            if (building.getFaction() == self.getFaction() &&
+                    building.getType() == BuildingType.GUARDIAN_TOWER &&
+                    building.getDistanceTo(self.getX(), self.getY()) < distanceToNearest){
+                distanceToNearest = building.getDistanceTo(self.getX(), self.getY());
+                sweetTower = building;
+            }
+        }
+        return sweetTower;
     }
 
     private void attackStrategy() {
@@ -251,34 +296,6 @@ public final class MyStrategy implements Strategy {
         }
     }
 
-    /**
-     * Находим ближайшую цель для атаки, независимо от её типа и других характеристик.
-     */
-    private LivingUnit getNearestTarget() {
-        List<LivingUnit> targets = new ArrayList<>();
-        targets.addAll(Arrays.asList(world.getBuildings()));
-        targets.addAll(Arrays.asList(world.getWizards()));
-        targets.addAll(Arrays.asList(world.getMinions()));
-
-        LivingUnit nearestTarget = null;
-        double nearestTargetDistance = Double.MAX_VALUE;
-
-        for (LivingUnit target : targets) {
-            if (target.getFaction() == Faction.NEUTRAL || target.getFaction() == self.getFaction()) {
-                continue;
-            }
-
-            double distance = self.getDistanceTo(target);
-
-            if (distance < nearestTargetDistance) {
-                nearestTarget = target;
-                nearestTargetDistance = distance;
-            }
-        }
-
-        return nearestTarget;
-    }
-
     private LivingUnit aquireTarget() {
         Map<LivingUnit, Double> targetPriority = new HashMap<>();
         for (LivingUnit unit: world.getBuildings()){
@@ -293,7 +310,7 @@ public final class MyStrategy implements Strategy {
                 continue;
             }
             double unitLife = unit.getMaxLife() / unit.getLife();
-            targetPriority.put(unit, unitLife * 500d);
+            targetPriority.put(unit, unitLife * 50d);
         }
         for (LivingUnit unit: world.getMinions()){
             if (unit.getFaction() == Faction.NEUTRAL || unit.getFaction() == self.getFaction()) {
@@ -308,7 +325,10 @@ public final class MyStrategy implements Strategy {
         Double bestScore = 0d;
         for (LivingUnit target : targetPriority.keySet()) {
             double distance = self.getDistanceTo(target);
-            Double score = (self.getCastRange() - distance) * targetPriority.get(target);
+            if (distance > self.getCastRange() - self.getRadius() - target.getRadius()){
+                continue;
+            }
+            Double score = (self.getCastRange() - distance) + targetPriority.get(target);
             targetPriority.put(target, score);
             if (bestScore < score){
                 bestScore = score;
