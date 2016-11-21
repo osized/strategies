@@ -53,10 +53,10 @@ public final class MyStrategy implements Strategy {
             return;
         }
 
-//        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 2).size() * 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 3){
-//            backpedalingStrategy();
-//            return;
-//        }
+        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 2).size() * 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 3){
+            backpedalingStrategy();
+            return;
+        }
         attackStrategy();
 
     }
@@ -130,10 +130,13 @@ public final class MyStrategy implements Strategy {
                     move.setCastAngle(angle);
                     move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
                 }
+            } else {
+                goTo(getNextWaypoint());
             }
-        }else {
+        } else {
             goTo(getNextWaypoint());
         }
+
         return;
     }
 
