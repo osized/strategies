@@ -313,7 +313,7 @@ public final class MyStrategy implements Strategy {
                 continue;
             }
             double unitLife = unit.getMaxLife() / unit.getLife();
-            targetPriority.put(unit, unitLife * 50d);
+            targetPriority.put(unit, unitLife * 250d);
         }
         for (LivingUnit unit: world.getMinions()){
             if (unit.getFaction() == Faction.NEUTRAL || unit.getFaction() == self.getFaction()) {
