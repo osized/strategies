@@ -24,6 +24,7 @@ public final class MyStrategy implements Strategy {
     private World world;
     private Game game;
     private Move move;
+    private double agression_level = 1;
 
     private short strafes = 0;
 
@@ -46,18 +47,34 @@ public final class MyStrategy implements Strategy {
             // Считаете, что сможете придумать более эффективный алгоритм уклонения? Попробуйте! ;)
             move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
         }
+        if (world.getTickIndex() > 1000
+                && self.getLife() == self.getMaxLife() &&
+                friendsInRange(self.getCastRange()).size() > 0 &&
+                agression_level < 2000){
+            agression_level++;
+        }
 
         // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
-        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR / 2) {
-            backpedalingStrategy();
+        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR &&
+                agression_level > -2000) {
+            agression_level -= 100d;
             return;
         }
 
-        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 2).size() * 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 3){
-            backpedalingStrategy();
+        if (enemiesInRange(self.getCastRange()).size() > friendsInRange(self.getCastRange() / 2).size() * 2 && self.getLife() < self.getMaxLife() * LOW_HP_FACTOR * 3 && agression_level > -2000){
+            agression_level -= 5d;
             return;
         }
-        attackStrategy();
+
+        if (agression_level > 0){
+            attackStrategy();
+        } else {
+            backpedalingStrategy();
+        }
+
+        if (world.getTickIndex() % 100 == 0){
+            System.out.println(agression_level);
+        }
 
     }
 
@@ -306,21 +323,21 @@ public final class MyStrategy implements Strategy {
                 continue;
             }
             double unitLife = unit.getMaxLife() / unit.getLife();
-            targetPriority.put(unit, unitLife * 5d);
+            targetPriority.put(unit, unitLife);
         }
         for (LivingUnit unit: world.getWizards()){
             if (unit.getFaction() == Faction.NEUTRAL || unit.getFaction() == self.getFaction()) {
                 continue;
             }
             double unitLife = unit.getMaxLife() / unit.getLife();
-            targetPriority.put(unit, unitLife * 250d);
+            targetPriority.put(unit, unitLife * 750d);
         }
         for (LivingUnit unit: world.getMinions()){
             if (unit.getFaction() == Faction.NEUTRAL || unit.getFaction() == self.getFaction()) {
                 continue;
             }
             double unitLife = unit.getMaxLife() / unit.getLife();
-            targetPriority.put(unit, unitLife * 10d);
+            targetPriority.put(unit, unitLife * 2d);
         }
 
 
